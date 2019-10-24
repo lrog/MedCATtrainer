@@ -10,12 +10,11 @@ RUN apt-get -y update && \
 # Get node and npm
 RUN apt-get install curl && \
     curl -sL https://deb.nodesource.com/setup_11.x | bash - && \
-    apt-get install nodejs && \
-    npm install -g npm@latest
+    apt-get install nodejs
 
 # Build frontend
 WORKDIR /home/frontend
-RUN  npm install && npm rebuild node-sass && npm run build
+RUN  npm install -g npm@latest && npm install && npm rebuild node-sass && npm run build
 
 # Build backend
 WORKDIR /home/api
