@@ -1,5 +1,7 @@
 FROM python:3.7
-ADD . /home/
+
+WORKDIR /home
+COPY ./ .
 
 # Update and upgrade everything
 RUN apt-get -y update && \
@@ -13,7 +15,7 @@ RUN apt-get install curl && \
 
 # Build frontend
 WORKDIR /home/frontend
-RUN npm install && npm rebuild node-sass && npm run build
+RUN  npm install && npm rebuild node-sass && npm run build
 
 # Build backend
 WORKDIR /home/api
