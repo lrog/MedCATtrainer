@@ -541,6 +541,98 @@ def update_meta_annotation(request):
 
 
 @api_view(http_method_names=['POST'])
+def add_annotation_with_meta(request):
+    # get the flag specifying whether the entry is matched as correct / incorrect
+    # or partially matched for meta-annotations or none
+    label = request.data['label']
+    ann = request.data['annotation']
+    meta_anns = request.data.get('meta-annotations')
+
+    # get the concept information
+    p_id = ann['project_id']
+    d_id = ann['document_id']
+    source_val = ann['source_value']
+    start = ann['source_value']
+    end = ann['source_value']
+    #sel_occur_idx = int(request.data['selection_occur_idx'])
+    cui = request.data['entity']['cui']
+
+    icd_code = ann.get('icd_code')
+    opcs_code =ann.get('opcs_code')
+
+    log.debug("Annotation being added")
+    log.debug(str(request.data))
+
+    # Get project and the right version of cat
+    user = request.user
+    project = ProjectAnnotateEntities.objects.get(id=p_id)
+    document = Document.objects.get(id=d_id)
+
+    if icd_code:
+        icd_code = ICDCode.objects.filter(id=icd_code).first()
+    if opcs_code:
+        opcs_code = OPCSCode.objects.filter(id=opcs_code).first()
+
+    # create the annotation
+    assert Entity.objects.filter(label=cui).count() > 0
+    entity = Entity.objects.get(label=cui)
+
+    ann_ent = AnnotatedEntity()
+    ann_ent.user = user
+    ann_ent.project = project
+    ann_ent.document = document
+    ann_ent.entity = entity
+    ann_ent.value = source_val
+    ann_ent.start_ind = start
+    ann_ent.end_ind = end
+    ann_ent.acc = 1
+    ann_ent.manually_created = True
+
+    if icd_code:
+        ann_ent.icd_code = icd_code
+    if opcs_code:
+        ann_ent.opcs_code = opcs_code
+
+    # assign a validity label for color display in UI
+    if label == 'match-correct':
+        ann_ent.validated = True
+        ann_ent.correct = True
+    elif label == 'match-incorrect':
+        ann_ent.validated = True
+        ann_ent.deleted = True
+    elif label == 'partial-meta':
+        ann_ent.validated = True
+        ann_ent.alternative = True
+    else:
+        ann_ent.validated = False
+
+    ann_ent.save()
+
+    # create meta-annotations
+    if meta_anns is not None:
+        for meta_ann in meta_anns:
+            meta_task_id = meta_ann['meta_task_id']
+            meta_task_value = meta_ann['meta_task_value']
+
+            meta_task = MetaTask.objects.filter(id=meta_task_id)[0]
+            meta_task_value = MetaTaskValue.objects.filter(id=meta_task_value)[0]
+
+            assert MetaAnnotation.objects.filter(annotated_entity=ann_ent, meta_task=meta_task).count == 0
+
+            meta_annotation = MetaAnnotation()
+            meta_annotation.annotated_entity = ann_ent
+            meta_annotation.meta_task = meta_task
+            meta_annotation.meta_task_value = meta_task_value
+
+            meta_annotation.save()
+
+    # create the meta-annotation
+
+    log.debug('Annotation with meta annotations added.')
+    return Response({'message': 'Annotation added successfully', 'id': ann_ent.id})
+
+
+@api_view(http_method_names=['POST'])
 def annotate_text(request):
     p_id = request.data['project_id']
     message = request.data['message']
@@ -575,10 +667,3 @@ def annotate_text(request):
     ents.sort(key=lambda e: e['start_ind'])
     out = {'message': message, 'entities': ents}
     return Response(out)
-
-
-
-
-
-
-

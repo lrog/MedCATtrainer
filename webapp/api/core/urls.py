@@ -57,6 +57,7 @@ urlpatterns = [
     path('api/complete-projects/', api.views.finished_projects),
     path('api/annotate-text/', api.views.annotate_text),
     path('api/update-meta-annotation/', api.views.update_meta_annotation),
+    path('api/add-annotation-with-meta/', api.views.add_annotation_with_meta),
     path('api/annotate-text/', api.views.annotate_text),
     re_path('^.*$', api.views.index, name='index'), # Match everything else to home
 ]
