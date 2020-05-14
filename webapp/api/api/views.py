@@ -543,7 +543,8 @@ def update_meta_annotation(request):
 @api_view(http_method_names=['POST'])
 def add_annotation_with_meta(request):
     # get the flag specifying whether the entry is matched as correct / incorrect
-    # or partially matched for meta-annotations or none
+    # or partially matched for meta-annotations or none, emulating the concept labeling
+    # functionality for arbitrators
     label = request.data['label']
     ann = request.data['annotation']
     meta_anns = request.data.get('meta-annotations')
@@ -551,12 +552,10 @@ def add_annotation_with_meta(request):
     # get the concept information
     p_id = ann['project_id']
     d_id = ann['document_id']
+    e_id = ann['entity_id']
     source_val = ann['source_value']
-    start = ann['source_value']
-    end = ann['source_value']
-    #sel_occur_idx = int(request.data['selection_occur_idx'])
-    cui = request.data['entity']['cui']
-
+    start = ann['start_ind']
+    end = ann['end_ind']
     icd_code = ann.get('icd_code')
     opcs_code =ann.get('opcs_code')
 
@@ -574,10 +573,16 @@ def add_annotation_with_meta(request):
         opcs_code = OPCSCode.objects.filter(id=opcs_code).first()
 
     # create the annotation
-    assert Entity.objects.filter(label=cui).count() > 0
-    entity = Entity.objects.get(label=cui)
+    assert Entity.objects.filter(id=e_id).count() > 0
+    entity = Entity.objects.get(id=e_id)
 
-    ann_ent = AnnotatedEntity()
+    ann_qs = AnnotatedEntity.objects.filter(user=user, project=project, document=document, entity=entity, start_ind=start, end_ind=end)
+    log.debug(f"found existing annotations: {ann_qs.count()}")
+    if ann_qs.count() > 0:
+        ann_ent = ann_qs.first()
+    else:
+        ann_ent = AnnotatedEntity()
+
     ann_ent.user = user
     ann_ent.project = project
     ann_ent.document = document
@@ -586,25 +591,28 @@ def add_annotation_with_meta(request):
     ann_ent.start_ind = start
     ann_ent.end_ind = end
     ann_ent.acc = 1
+
+    # reset the annotation validation status emulating the labeling
+    ann_ent.validated = True
     ann_ent.manually_created = True
+    ann_ent.deleted = False
+    ann_ent.killed = False
+    ann_ent.alternative = False
+    ann_ent.correct = False
 
     if icd_code:
         ann_ent.icd_code = icd_code
     if opcs_code:
         ann_ent.opcs_code = opcs_code
 
-    # assign a validity label for color display in UI
+    # assign a validity label for color display in UI, possibly emulating
+    # labeling functionality for arbitrator
     if label == 'match-correct':
-        ann_ent.validated = True
         ann_ent.correct = True
     elif label == 'match-incorrect':
-        ann_ent.validated = True
-        ann_ent.deleted = True
-    elif label == 'partial-meta':
-        ann_ent.validated = True
+        ann_ent.killed = True
+    elif label == 'match-partial':
         ann_ent.alternative = True
-    else:
-        ann_ent.validated = False
 
     ann_ent.save()
 
@@ -617,16 +625,17 @@ def add_annotation_with_meta(request):
             meta_task = MetaTask.objects.filter(id=meta_task_id)[0]
             meta_task_value = MetaTaskValue.objects.filter(id=meta_task_value)[0]
 
-            assert MetaAnnotation.objects.filter(annotated_entity=ann_ent, meta_task=meta_task).count == 0
+            meta_qs = MetaAnnotation.objects.filter(annotated_entity=ann_ent, meta_task=meta_task)
+            if meta_qs.count() > 0:
+                meta_annotation = meta_qs.first()
+            else:
+                meta_annotation = MetaAnnotation()
 
-            meta_annotation = MetaAnnotation()
             meta_annotation.annotated_entity = ann_ent
             meta_annotation.meta_task = meta_task
             meta_annotation.meta_task_value = meta_task_value
 
             meta_annotation.save()
-
-    # create the meta-annotation
 
     log.debug('Annotation with meta annotations added.')
     return Response({'message': 'Annotation added successfully', 'id': ann_ent.id})
