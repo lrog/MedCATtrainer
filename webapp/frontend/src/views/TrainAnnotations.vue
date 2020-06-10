@@ -26,7 +26,7 @@
     </div>
 
     <multipane class="viewport-container">
-      <div class="full-height">
+      <div :style="{minWith: '500px'}" class="full-height">
         <div class="app-main">
           <document-summary :docs="docs" :moreDocs="nextDocSetUrl !== null"
                             :validatedDocIds="validatedDocuments"
@@ -40,15 +40,15 @@
             <div class="taskbar">
               <nav-bar class="nav" :ents="ents" :currentEnt="currentEnt" @select:next="next" @select:back="back"></nav-bar>
               <task-bar class="tasks" :taskLocked="taskLocked" :ents="ents" :altSearch="altSearch"
-                        :submitLocked="docToSubmit !== null" @select:remove="markRemove" @select:correct="markCorrect"
+                        :submitLocked="docToSubmit !== null" :terminateEnabled="(project || {}).terminate_available" @select:remove="markRemove" @select:correct="markCorrect"
                         @select:kill="markKill" @select:alternative="toggleAltSearch" @submit="submitDoc"></task-bar>
             </div>
           </div>
         </div>
       </div>
       <multipane-resizer></multipane-resizer>
-      <div :style="{ flexGrow: 1, width: '300px', maxWidth: '1000px' }">
-        <div :class="{'full-sidebar-container': conceptSynonymSelection, 'sidebar-container': !conceptSynonymSelection}">
+      <div :style="{ flexGrow: 1, width: '375px', minWidth: '425px', maxWidth: '1000px' }">
+        <div class="sidebar-container">
           <transition name="slide-left">
             <concept-summary v-if="!conceptSynonymSelection" :selectedEnt="currentEnt" :altSearch="altSearch"
                              :project="project"
@@ -729,8 +729,8 @@ export default {
 }
 
 .sidebar-container {
-  height: calc(100% - 250px - 41px);
-  display: flex   ;
+  height: 100%;
+  display: flex;
   flex-direction: column;
   padding: 5px;
 

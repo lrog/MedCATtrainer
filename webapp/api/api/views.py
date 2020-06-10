@@ -134,7 +134,7 @@ class ConceptView(generics.ListAPIView):
     queryset = Concept.objects.all()
     serializer_class = ConceptSerializer
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
-    search_fields = ['pretty_name']
+    search_fields = ['$pretty_name']
     filterset_class = ConceptFilter
     filterset_fields = ['tui', 'cui', 'cdb']
 
@@ -275,6 +275,7 @@ def prepare_documents(request):
                                 project=project,
                                 document=document,
                                 cdb=cat.cdb,
+                                existing_annotations=anns,
                                 tuis=tuis,
                                 cuis=cuis)
     except Exception as e:
